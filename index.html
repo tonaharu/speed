@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPSスピードメーター</title>
+    <!-- PWA化のための設定（iPad用） -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="スピードメーター">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #111;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container { text-align: center; }
+        .label { font-size: 1.5rem; color: #888; }
+        .speed { font-size: 5rem; font-weight: bold; color: #00ff66; margin: 10px 0; }
+        .unit { font-size: 2rem; color: #00ff66; }
+        .info { font-size: 1rem; color: #aaa; margin-top: 20px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="label">現在の速度</div>
+    <div><span id="speed-display">0.0</span> <span class="unit">km/h</span></div>
+    
+    <div class="info">
+        精度: <span id="accuracy-display">-</span> m<br>
+        ステータス: <span id="status-display">GPS準備中...</span>
+    </div>
+</div>
+
+<script>
+    const speedDisplay = document.getElementById('speed-display');
+    const accuracyDisplay = document.getElementById('accuracy-display');
+    const statusDisplay = document.getElementById('status-display');
+
+    // GPSの監視を開始
+    if ('geolocation' in navigator) {
+        const options = {
+            enableHighAccuracy: true, // 高精度モード（必須）
+            timeout: 10000,           // タイムアウト時間
+            maximumAge: 0             // キャッシュされた位置情報は使わない
+        };
+
+        navigator.geolocation.watchPosition(success, error, options);
+        statusDisplay.textContent = "GPS受信中...";
+    } else {
+        statusDisplay.textContent = "この端末はGPSに対応していません。";
+    }
+
+    // 位置情報が更新されたときの処理
+    function success(position) {
+        const coords = position.coords;
+        
+        // 精度（誤差）の表示
+        accuracyDisplay.textContent = coords.accuracy.toFixed(1);
+
+        // APIから速度（秒速メートル）を取得
+        if (coords.speed !== null && coords.speed !== undefined) {
+            // 秒速(m/s) を 時速(km/h) に変換
+            let kmh = coords.speed * 3.6;
+            
+            // GPSのブレによる微小なノイズ（静止中の揺れ）をカット
+            if (kmh < 0.5) kmh = 0; 
+
+            speedDisplay.textContent = kmh.toFixed(1);
+            statusDisplay.textContent = "計測中";
+        } else {
+            statusDisplay.textContent = "速度データを取得できません（静止中、または精度不足）";
+            speedDisplay.textContent = "0.0";
+        }
+    }
+
+    // エラー処理
+    function error(err) {
+        console.error(err);
+        if (err.code === 1) {
+            statusDisplay.textContent = "位置情報の利用が許可されていません。";
+        } else {
+            statusDisplay.textContent = "GPS信号を探しています...";
+        }
+    }
+</script>
+
+</body>
+</html>
